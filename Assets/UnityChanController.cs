@@ -6,6 +6,8 @@ public class UnityChanController : MonoBehaviour
 {
     private Animator animator;
     private bool hasStarted = false; // アニメーションが開始済みかを管理
+    private bool hasEnd = false;
+    
 
 
     // Start is called before the first frame update
@@ -18,11 +20,27 @@ public class UnityChanController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetMouseButtonDown(0) && !hasStarted) // 左クリックかつ未開始の場合
+        if (Input.GetMouseButtonDown(0)) 
         {
-            animator.speed = 1;
-            animator.Play("Motion");
-            hasStarted = true; // 開始済みに設定
+           if (!hasStarted || hasEnd)
+            {
+                animator.speed = 1;
+                animator.Play("GolfAnimator", 0, 0f); //最初から再生
+                hasStarted = true;
+                hasEnd = false;　//リセット
+            }
+        }
+
+        // アニメーションが終了したかをチェック
+        if (hasStarted && animator.GetCurrentAnimatorStateInfo(0).normalizedTime >= 1f)
+        {
+            animator.speed = 0; // アニメーションを停止
+            hasStarted = false; //リセットして次のクリックを待機
+            hasEnd = true;
+            
         }
     }
+
+   
 }
+
