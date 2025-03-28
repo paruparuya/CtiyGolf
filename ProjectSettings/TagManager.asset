@@ -6,6 +6,9 @@ TagManager:
   tags:
   - Club
   - Can
+  - Trash
+  - Window
+  - Box
   layers:
   - Default
   - TransparentFX
