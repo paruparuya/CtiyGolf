@@ -9,6 +9,7 @@ TagManager:
   - Trash
   - Window
   - Box
+  - Ground
   layers:
   - Default
   - TransparentFX

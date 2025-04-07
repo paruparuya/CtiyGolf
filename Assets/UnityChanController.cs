@@ -7,8 +7,8 @@ public class UnityChanController : MonoBehaviour
     private Animator animator;
     private bool hasStarted = false; // アニメーションが開始済みかを管理
     private bool hasEnd = false;
-    
-
+    public BollController bollController;
+    public GameObject shootButton;
 
     // Start is called before the first frame update
     void Start()
@@ -20,27 +20,56 @@ public class UnityChanController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetMouseButtonDown(0)) 
-        {
-           if (!hasStarted || hasEnd)
-            {
-                animator.speed = 1;
-                animator.Play("GolfAnimator", 0, 0f); //最初から再生
-                hasStarted = true;
-                hasEnd = false;　//リセット
-            }
-        }
-
-        // アニメーションが終了したかをチェック
         if (hasStarted && animator.GetCurrentAnimatorStateInfo(0).normalizedTime >= 1f)
         {
-            animator.speed = 0; // アニメーションを停止
-            hasStarted = false; //リセットして次のクリックを待機
+            animator.speed = 0;
+            hasStarted = false;
             hasEnd = true;
-            
+        }
+
+
+    }
+
+    public void PlayGolfAndHitCan()
+    {
+        if (!hasStarted || hasEnd)
+        {
+            animator.speed = 1;
+            animator.Play("GolfAnimator", 0, 0f);
+            hasStarted = true;
+            hasEnd = false;
+
+            // 缶を飛ばす処理（準備できてたら）
+            if (bollController != null)
+            {
+                bollController.ManualHitBall();
+            }
+
+            // ボタンを非表示
+            if (shootButton != null)
+            {
+                Debug.Log("ボタンを消します"); // ← これ追加してチェック！
+                shootButton.SetActive(false);
+            }
         }
     }
 
-   
+    public void OnGolfAnimationEnd()
+    {
+        animator.speed = 0;
+        hasStarted = false;
+        hasEnd = true;
+        Debug.Log("アニメーション終了イベントが呼ばれました");
+    }
+
+    public void ResetAnimationState()
+    {
+        animator.Play("GolfAnimator", 0, 0f); // ← 最初のフレームに強制再生
+        animator.speed = 0;                   // ← 再生を止める
+        hasStarted = false;
+        hasEnd = true;
+        Debug.Log("アニメーション状態がリセットされました");
+    }
+
 }
 

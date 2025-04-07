@@ -169,7 +169,7 @@ GameObject:
   - component: {fileID: 5676816200385472754}
   - component: {fileID: 6866310173928348026}
   - component: {fileID: -5131553352934914109}
-  - component: {fileID: -8092107609892080623}
+  - component: {fileID: 5047483114340215947}
   m_Layer: 0
   m_Name: canPrefab
   m_TagString: Can
@@ -242,7 +242,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.1, y: 0.25506008, z: 0.10918299}
   m_Center: {x: 1.2780615e-16, y: 0.11896634, z: -0.37796497}
---- !u!114 &-8092107609892080623
+--- !u!114 &5047483114340215947
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

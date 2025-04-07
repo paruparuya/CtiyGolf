@@ -5,7 +5,7 @@ MonoImporter:
   serializedVersion: 2
   defaultReferences:
   - canPrefab: {fileID: 7344703583926694801, guid: 3416e40a273c28a4290df8eb1847982f, type: 3}
-  executionOrder: 0
+  executionOrder: 5
   icon: {instanceID: 0}
   userData: 
   assetBundleName: 

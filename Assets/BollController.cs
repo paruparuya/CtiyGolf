@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Collections;
 
 public class BollController : MonoBehaviour
 {
@@ -12,28 +13,34 @@ public class BollController : MonoBehaviour
     [HideInInspector] public bool hitWindow = false;  // 窓に当たったか
     [HideInInspector] public bool missHit = false;  // ミスしたか
 
+    // CanCollisionHandlerへの参照を追加
+    private CanCollisionHandler collisionHandler;
+
+    public GameObject shootButton; //シュートボタンを配置
+
     // ターゲット関連
     public GameObject[] targets; // ターゲットの配列
     private int targetCount = 7; // ターゲットの数
     private int selectedTarget = 0; // 選択中のターゲット
     private float timer = 0f; // ターゲット切り替え用のタイマー
     private int direction = 1; // 移動方向（1: 0→6, -1: 6→0）
+    private bool isTargetmoving = false;
+    public CameraController cameraController; //カメラコントローラーの参照
 
     // かご関連
     public GameObject basket; // かごのオブジェクト
     public Vector3[] basketPositions = new Vector3[5]; // かごの5つの固定位置
 
-    // 箱の蓋関連
-    public Collider boxLidCollider; // 箱の蓋のCollider
+    public GameObject boxLid; // 蓋のGameObject（Inspectorで設定）
     private int actionCount = 0; // アクション回数のカウンター
     private const int MAX_ACTIONS = 5; // 5回で1サイクル
-    private int openLidTiming; // 蓋が開くランダムなタイミング
+    private int openLidTiming; // 蓋が開くタイミング（0～4のランダム）
+    [SerializeField] private Vector3 closedPosition = new Vector3(-0.00814029f, 1.149f, -0.392f); // 閉じた状態のローカル位置
+    [SerializeField] private Vector3 openPosition = new Vector3(-0.00814029f, 1.133f, -0.37f);   // 開いた状態のローカル位置
+    [SerializeField] private Quaternion closedRotation = Quaternion.Euler(0, 0, 0); // 閉じた状態の回転
+    [SerializeField] private Quaternion openRotation = Quaternion.Euler(-96.665f, 0, 0); // 開いた状態の回転
 
-    // 点数関係
-    private int trashIn = 50;
-    private int trashOut = -10;
-    private int window = -100;
-    private int boxIn = 200;
+
 
     void Start()
     {
@@ -55,10 +62,17 @@ public class BollController : MonoBehaviour
             };
         }
 
-        if (boxLidCollider != null)
+        // 蓋の初期設定
+        if (boxLid == null)
         {
-            boxLidCollider.enabled = false;
+            Debug.LogError("BoxLid GameObject is not assigned in the inspector!");
         }
+        else
+        {
+            boxLid.transform.rotation = closedRotation; // 最初は閉じた状態
+        }
+
+
 
         UpdateTargetVisibility();
         SpawnNewCan();
@@ -74,58 +88,30 @@ public class BollController : MonoBehaviour
             return;
         }
 
-        timer += Time.deltaTime;
-        if (timer >= 0.1f)
+        if (isTargetmoving)
         {
-            timer = 0f;
-            selectedTarget += direction;
-            if (selectedTarget >= targetCount || selectedTarget < 0)
+            timer += Time.deltaTime;
+            if (timer >= 0.1f)
             {
-                direction *= -1;
-                selectedTarget += direction * 2;
-            }
-            UpdateTargetVisibility();
-        }
-
-        if (Input.GetMouseButtonDown(0))
-        {
-            Debug.Log("Mouse clicked");
-            if (isReadyToHit)
-            {
-                HitBall();
-                isReadyToHit = false;
-            }
-            else
-            {
-                SpawnNewCan();
-                isReadyToHit = true;
+                timer = 0f;
+                selectedTarget += direction;
+                if (selectedTarget >= targetCount || selectedTarget < 0)
+                {
+                    direction *= -1;
+                    selectedTarget += direction * 2;
+                }
+                UpdateTargetVisibility();
             }
         }
 
-        // フラグ処理（ここは変更なし）
-        if (this.inTrash)
-        {
-            Debug.Log("ゴミ箱に入りました");
-            this.inTrash = false;
-        }
-        if (this.inBox)
-        {
-            Debug.Log("箱に入りました");
-            this.inBox = false;
-        }
-        if (this.hitWindow)
-        {
-            Debug.Log("窓が割れました");
-            this.hitWindow = false;
-        }
-        if (this.missHit)
-        {
-            Debug.Log("ミスです");
-            this.missHit = false;
-        }
+
+        if (this.inTrash) { Debug.Log("ゴミ箱に入りました"); this.inTrash = false; }
+        if (this.inBox) { Debug.Log("箱に入りました"); this.inBox = false; }
+        if (this.hitWindow) { Debug.Log("窓が割れました"); this.hitWindow = false; }
+        if (this.missHit) { Debug.Log("ミスです"); this.missHit = false; }
     }
 
-    void SpawnNewCan()
+    public void SpawnNewCan()
     {
         if (currentCan != null)
         {
@@ -138,18 +124,21 @@ public class BollController : MonoBehaviour
             Debug.LogError("CanPrefab is not assigned in the inspector!");
             return;
         }
+
         currentCan = Instantiate(canPrefab);
         rb = currentCan.GetComponent<Rigidbody>();
-        if (rb == null)
+        collisionHandler = currentCan.GetComponent<CanCollisionHandler>();
+
+        if (rb == null || collisionHandler == null)
         {
-            Debug.LogError("Rigidbody not found on instantiated can!");
+            Debug.LogError("Missing components on new can.");
+            return;
         }
-        Debug.Log("Can spawned: " + (currentCan != null) + ", Rigidbody: " + (rb != null));
+
+        collisionHandler.ResetTrigger();
 
         MoveBasketToRandomPosition();
-
         actionCount++;
-        Debug.Log($"アクション回数: {actionCount}");
         if (actionCount - 1 == openLidTiming)
         {
             OpenBoxLid();
@@ -161,9 +150,18 @@ public class BollController : MonoBehaviour
 
         if (actionCount >= MAX_ACTIONS)
         {
-            Debug.Log("5回終了！新しいサイクルを開始します。");
             ResetGame();
         }
+
+        isTargetmoving = true;
+
+        if (cameraController != null)
+        {
+            cameraController.ResetCameraPosition();
+        }
+
+        // ★ ここで1秒後にシュートボタン表示
+        StartCoroutine(ShowShootButtonAfterDelay());
     }
 
     void UpdateTargetVisibility()
@@ -215,18 +213,20 @@ public class BollController : MonoBehaviour
 
     void OpenBoxLid()
     {
-        if (boxLidCollider != null)
+        if (boxLid != null)
         {
-            boxLidCollider.enabled = true;
+            boxLid.transform.localPosition = openPosition;
+            boxLid.transform.localRotation = Quaternion.Euler(-96.665f, 0, 0);
             Debug.Log("蓋が開きました！");
         }
     }
 
     void CloseBoxLid()
     {
-        if (boxLidCollider != null)
+        if (boxLid != null)
         {
-            boxLidCollider.enabled = false;
+            boxLid.transform.localPosition = closedPosition;
+            boxLid.transform.localRotation = closedRotation;
             Debug.Log("蓋が閉じています。");
         }
     }
@@ -242,5 +242,27 @@ public class BollController : MonoBehaviour
         actionCount = 0;
         CloseBoxLid();
         SetRandomOpenTiming();
+    }
+
+    public void ManualHitBall()
+    {
+        if (isReadyToHit)
+        {
+            isTargetmoving = false;
+            HitBall();
+            isReadyToHit = false;
+        }
+    }
+
+    private IEnumerator ShowShootButtonAfterDelay()
+    {
+        yield return new WaitForSeconds(1f);
+
+        isReadyToHit = true; 
+
+        if (shootButton != null)
+        {
+            shootButton.SetActive(true);
+        }
     }
 }

@@ -1,47 +1,49 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using System.Collections;
+using System;
 
 public class CanCollisionHandler : MonoBehaviour
 {
-    private BollController controller;
+    private BollController controller; // BollControllerへの参照
+    private Score scoreManager; // Scoreへの参照
+    private bool hasTriggered = false; // トリガーがすでに反応しているかどうか
+    public event Action<string> OnCanTriggered; // ← 追加：タグ名を通知
 
+    // 初期化処理
     void Start()
     {
-        // BollControllerをシーンから検索
+        // BollControllerとScoreManagerをシーンから探して取得
         controller = FindObjectOfType<BollController>();
-        if (controller == null)
-        {
-            Debug.LogError("BollController not found in the scene!");
-        }
+        scoreManager = FindObjectOfType<Score>();
+
+        
     }
 
+    // トリガーに入った時の処理
     void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Trigger Entered! Collided with: " + other.gameObject.name + ", Tag: " + other.gameObject.tag);
-        if (controller != null)
+        // すでに反応していたら何もしない
+        if (hasTriggered) return;
+
+        // 特定のタグに当たった場合に反応
+        if (other.CompareTag("Trash") || other.CompareTag("Window") || other.CompareTag("Box") || other.CompareTag("Ground"))
         {
-            if (other.CompareTag("Trash"))
-            {
-                controller.inTrash = true;
-            }
-            else if (other.CompareTag("Window"))
-            {
-                controller.hitWindow = true;
-            }
-            else if (other.CompareTag("Box"))
-            {
-                controller.inBox = true;
-            }
-            else
-            {
-                controller.missHit = true;
-            }
+            Debug.Log($"缶が {other.tag} に当たりました！");
+
+            // 反応済みとしてフラグを設定
+            hasTriggered = true;
+
+            OnCanTriggered?.Invoke(other.tag); // ← ここで通知
         }
     }
+   
 
-    void OnCollisionEnter(Collision collision)
+    // 新しい缶を生成したらボタンを非表示にする
+    public void ResetTrigger()
     {
-        Debug.Log("Collision Entered! Collided with: " + collision.gameObject.name);
+        hasTriggered = false; // 反応フラグをリセット
+
+        
     }
 }
