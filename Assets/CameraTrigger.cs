@@ -10,7 +10,7 @@ public class CameraTrigger : MonoBehaviour
         if (other.CompareTag("Can")) // 缶がトリガーを通過したとき
         {
             cameraController.MoveCamera(cameraIndex);
-            Debug.Log($"カメラが位置 {cameraIndex} に移動しました！");
+            
         }
     }
 }

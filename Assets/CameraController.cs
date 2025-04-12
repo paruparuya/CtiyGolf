@@ -15,7 +15,7 @@ public class CameraController : MonoBehaviour
         {
             transform.position = initialPosition.position;
             transform.rotation = initialPosition.rotation;
-            Debug.Log($"Camera set to initialPosition: Position={initialPosition.position}, Rotation={initialPosition.rotation.eulerAngles}");
+            
         }
         else
         {
@@ -23,7 +23,7 @@ public class CameraController : MonoBehaviour
         }
         startPos = transform.position;
         startRot = transform.rotation;
-        Debug.Log($"startPos={startPos}, startRot={startRot.eulerAngles}");
+        
     }
 
     void Update()
@@ -40,7 +40,7 @@ public class CameraController : MonoBehaviour
         {
             transform.position = targetPositions[index].position;
             transform.rotation = targetPositions[index].rotation;
-            Debug.Log($"ÉJÉÅÉâÇ {index} ÇÃà íuÇ…èuä‘à⁄ìÆÇµÇ‹ÇµÇΩÅI");
+            
         }
     }
 
@@ -48,7 +48,7 @@ public class CameraController : MonoBehaviour
     {
         if (!isMoving)
         {
-            Debug.Log($"ResetCameraPosition called. Moving to startPos={startPos}, startRot={startRot.eulerAngles}");
+           
             StartCoroutine(MoveToTarget(startPos, startRot));
         }
     }

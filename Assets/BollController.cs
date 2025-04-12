@@ -24,7 +24,7 @@ public class BollController : MonoBehaviour
     private int selectedTarget = 0; // 選択中のターゲット
     private float timer = 0f; // ターゲット切り替え用のタイマー
     private int direction = 1; // 移動方向（1: 0→6, -1: 6→0）
-    private bool isTargetmoving = false;
+    public bool isTargetmoving = false;
     public CameraController cameraController; //カメラコントローラーの参照
 
     // かご関連
@@ -208,7 +208,7 @@ public class BollController : MonoBehaviour
     {
         int randomIndex = Random.Range(0, basketPositions.Length);
         basket.transform.position = basketPositions[randomIndex];
-        Debug.Log($"Basket moved to: {basket.transform.position}");
+        
     }
 
     void OpenBoxLid()
@@ -248,7 +248,6 @@ public class BollController : MonoBehaviour
     {
         if (isReadyToHit)
         {
-            isTargetmoving = false;
             HitBall();
             isReadyToHit = false;
         }
@@ -264,5 +263,10 @@ public class BollController : MonoBehaviour
         {
             shootButton.SetActive(true);
         }
+    }
+
+    public int GetActionCount()
+    {
+        return actionCount;
     }
 }

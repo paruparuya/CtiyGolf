@@ -15,6 +15,15 @@ public class UnityChanController : MonoBehaviour
     {
         animator = GetComponent<Animator>();
         animator.speed = 0; // 初期状態で停止
+
+        if (bollController == null)
+        {
+            Debug.LogError("bollController が割り当てられていません！");
+        }
+        else
+        {
+            Debug.Log("bollController は正常に割り当てられています！");
+        }
     }
 
     // Update is called once per frame
@@ -42,13 +51,14 @@ public class UnityChanController : MonoBehaviour
             // 缶を飛ばす処理（準備できてたら）
             if (bollController != null)
             {
-                bollController.ManualHitBall();
+                bollController.isTargetmoving = false;
+                StartCoroutine(DelayHitCan(1.3f)); // ← 1.3秒後にヒット
             }
 
             // ボタンを非表示
             if (shootButton != null)
             {
-                Debug.Log("ボタンを消します"); // ← これ追加してチェック！
+                
                 shootButton.SetActive(false);
             }
         }
@@ -59,7 +69,7 @@ public class UnityChanController : MonoBehaviour
         animator.speed = 0;
         hasStarted = false;
         hasEnd = true;
-        Debug.Log("アニメーション終了イベントが呼ばれました");
+        
     }
 
     public void ResetAnimationState()
@@ -68,7 +78,16 @@ public class UnityChanController : MonoBehaviour
         animator.speed = 0;                   // ← 再生を止める
         hasStarted = false;
         hasEnd = true;
-        Debug.Log("アニメーション状態がリセットされました");
+       
+    }
+
+    private IEnumerator DelayHitCan(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (bollController != null)
+        {
+            bollController.ManualHitBall();
+        }
     }
 
 }
