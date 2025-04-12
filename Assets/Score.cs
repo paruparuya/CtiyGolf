@@ -173,7 +173,7 @@ public class Score : MonoBehaviour
         yield return new WaitForSeconds(finalScoreDelay);
         ShowFinalScore();
 
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(1f);
         if (resetButton != null)
         {
             resetButton.SetActive(true);
@@ -199,7 +199,13 @@ public class Score : MonoBehaviour
         {
             temporaryScoreText.text = points >= 0 ? $"+{points}" : points.ToString();
             temporaryScoreText.gameObject.SetActive(true);
+
+            //•\Ž¦Œã‚É2•b‘Ò‚Á‚Ä‚©‚ç”ñ•\Ž¦‚É
+            yield return new WaitForSeconds(1f);
+            temporaryScoreText.gameObject.SetActive(false);
         }
+
+        
     }
 
     private int GetPointsFromTag(string tag)
