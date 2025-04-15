@@ -7,16 +7,19 @@ public class BollController : MonoBehaviour
     public GameObject canPrefab; // 缶のプレハブ
     private Rigidbody rb; // 現在の缶のRigidbody
     private GameObject currentCan; // 現在の缶オブジェクト
-    private bool isReadyToHit = false; // 缶を飛ばす準備ができているか
+    public bool isReadyToHit = false; // 缶を飛ばす準備ができているか
     [HideInInspector] public bool inTrash = false; // ゴミ箱に入ったか
     [HideInInspector] public bool inBox = false;  // 箱に入ったか
     [HideInInspector] public bool hitWindow = false;  // 窓に当たったか
     [HideInInspector] public bool missHit = false;  // ミスしたか
+    public AudioClip shootSound; //缶が飛んで行く時の音
+    private AudioSource audioSource;
 
     // CanCollisionHandlerへの参照を追加
     private CanCollisionHandler collisionHandler;
 
     public GameObject shootButton; //シュートボタンを配置
+    private Coroutine showButtonCoroutine = null;
 
     // ターゲット関連
     public GameObject[] targets; // ターゲットの配列
@@ -39,11 +42,14 @@ public class BollController : MonoBehaviour
     [SerializeField] private Vector3 openPosition = new Vector3(-0.00814029f, 1.133f, -0.37f);   // 開いた状態のローカル位置
     [SerializeField] private Quaternion closedRotation = Quaternion.Euler(0, 0, 0); // 閉じた状態の回転
     [SerializeField] private Quaternion openRotation = Quaternion.Euler(-96.665f, 0, 0); // 開いた状態の回転
+    public GameObject lidObject; // 蓋が開いている時に出すオブジェクト
 
 
 
     void Start()
     {
+        audioSource = GetComponent<AudioSource>();
+
         if (targets == null || targets.Length != targetCount)
         {
             Debug.LogError($"Target count must be {targetCount}, but found {(targets == null ? 0 : targets.Length)}. Please assign targets in the inspector.");
@@ -69,7 +75,9 @@ public class BollController : MonoBehaviour
         }
         else
         {
-            boxLid.transform.rotation = closedRotation; // 最初は閉じた状態
+            boxLid.transform.localPosition = closedPosition;
+            boxLid.transform.localRotation = closedRotation;
+            Debug.Log("ゲーム開始時、蓋を閉じて初期化しました");
         }
 
 
@@ -77,7 +85,6 @@ public class BollController : MonoBehaviour
         UpdateTargetVisibility();
         SpawnNewCan();
         isReadyToHit = true;
-        SetRandomOpenTiming();
     }
 
     void Update()
@@ -139,7 +146,10 @@ public class BollController : MonoBehaviour
 
         MoveBasketToRandomPosition();
         actionCount++;
-        if (actionCount - 1 == openLidTiming)
+
+        // 30％の確率で蓋を開く
+        float chance = Random.value; // 0.0〜1.0
+        if (chance <= 0.3f)
         {
             OpenBoxLid();
         }
@@ -160,8 +170,22 @@ public class BollController : MonoBehaviour
             cameraController.ResetCameraPosition();
         }
 
+        if (showButtonCoroutine != null)
+        {
+            StopCoroutine(showButtonCoroutine);
+        }
+
+        
+        showButtonCoroutine = StartCoroutine(ShowShootButtonAfterDelay());
+       
         // ★ ここで1秒後にシュートボタン表示
         StartCoroutine(ShowShootButtonAfterDelay());
+
+        Score score = FindObjectOfType<Score>();
+        if (score != null && collisionHandler != null)
+        {
+            collisionHandler.RegisterScoreHandler(score);
+        }
     }
 
     void UpdateTargetVisibility()
@@ -219,6 +243,10 @@ public class BollController : MonoBehaviour
             boxLid.transform.localRotation = Quaternion.Euler(-96.665f, 0, 0);
             Debug.Log("蓋が開きました！");
         }
+        if (lidObject != null)
+        {
+            lidObject.SetActive(true); // オブジェクトを表示
+        }
     }
 
     void CloseBoxLid()
@@ -229,19 +257,18 @@ public class BollController : MonoBehaviour
             boxLid.transform.localRotation = closedRotation;
             Debug.Log("蓋が閉じています。");
         }
+        if (lidObject != null)
+        {
+            lidObject.SetActive(false); // オブジェクトを非表示
+        }
     }
 
-    void SetRandomOpenTiming()
-    {
-        openLidTiming = Random.Range(0, MAX_ACTIONS);
-        Debug.Log($"蓋が開くタイミング: {openLidTiming + 1}回目");
-    }
+
 
     void ResetGame()
     {
         actionCount = 0;
         CloseBoxLid();
-        SetRandomOpenTiming();
     }
 
     public void ManualHitBall()
@@ -251,13 +278,18 @@ public class BollController : MonoBehaviour
             HitBall();
             isReadyToHit = false;
         }
+
+        if (shootSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(shootSound); //音を鳴らす
+        }
     }
 
     private IEnumerator ShowShootButtonAfterDelay()
     {
         yield return new WaitForSeconds(1f);
 
-        isReadyToHit = true; 
+        isReadyToHit = true;
 
         if (shootButton != null)
         {

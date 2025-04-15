@@ -11,53 +11,88 @@ public class Score : MonoBehaviour
     private int score = 0;
 
     [Header("UIボタン制御")]
-    public GameObject uiButton; // Canvas上のボタン
-    public BollController bollController; // SpawnNewCanを呼ぶため
-
-    private CanCollisionHandler currentHandler;
+    public GameObject uiButton;
+    public BollController bollController;
     public UnityChanController unityChanController;
 
-    public TMP_Text finalScoreText; // 最終スコア表示用UI（別の位置に配置）
+    public TMP_Text finalScoreText;
     private bool isGameOver = false;
-    private int currentActionCount = 0; // アクションカウント
-    [Header("ゲーム終了演出")]
-    [SerializeField] private float finalScoreDelay = 1.0f;
+
     [Header("一時スコア表示用")]
     public TMP_Text temporaryScoreText;
-    [Header("リセットボタン")]
-    public GameObject resetButton; //リセットボタン
 
-    private int triggerCount = 0; // 缶が当たった回数
-    private const int MAX_TRIGGERS = 5;
+    [Header("リセットボタン")]
+    public GameObject resetButton;
+
+    [SerializeField] private float finalScoreDelay = 1.0f;
+    private CanCollisionHandler currentHandler;
 
     void Start()
     {
+        Debug.Log("現在のシーン名は: " + SceneManager.GetActiveScene().name);
+        score = GameManager.Instance.totalScore;
         UpdateScoreText();
-
         if (uiButton != null)
         {
             uiButton.SetActive(false);
             uiButton.GetComponent<Button>().onClick.AddListener(OnUIButtonClicked);
         }
+
+        InvokeRepeating("TryRegisterHandler", 0.5f, 1f); // 追加
+
+        if (SceneManager.GetActiveScene().name == "SampleScene 2" ||
+            SceneManager.GetActiveScene().name == "SampleScene 1")
+        {
+            if (scoreText != null)
+            {
+                Debug.Log("scoreText は設定されています");
+                scoreText.color = Color.white;
+            }
+            else
+            {
+                Debug.LogWarning("scoreText が設定されていません！");
+            }
+
+            if (finalScoreText != null)
+            {
+                Debug.Log("finalText は設定されています");
+                finalScoreText.color = Color.white;
+            }
+            else
+            {
+                Debug.LogWarning("finalText が設定されていません！");
+            }
+
+            if (temporaryScoreText != null)
+            {
+                Debug.Log("temporaryText は設定されています");
+                temporaryScoreText.color = Color.white;
+            }
+            else
+            {
+                Debug.LogWarning("temporaryText が設定されていません！");
+            }
+        }
+
+        if (uiButton != null)
+        {
+            uiButton.SetActive(false);
+            uiButton.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(OnUIButtonClicked);
+        }
     }
 
     void Update()
     {
-        if (bollController == null)
-        {
-            return;
-        }
+        if (bollController == null) return;
 
-        GameObject currentCan = GameObject.FindWithTag("Can"); // ← タグで取得
+        GameObject currentCan = GameObject.FindWithTag("Can");
         if (currentCan != null)
         {
             var handler = currentCan.GetComponent<CanCollisionHandler>();
             if (handler != null && handler != currentHandler)
             {
                 if (currentHandler != null)
-                {
                     currentHandler.OnCanTriggered -= HandleCanTriggered;
-                }
 
                 currentHandler = handler;
                 currentHandler.OnCanTriggered += HandleCanTriggered;
@@ -65,20 +100,33 @@ public class Score : MonoBehaviour
         }
     }
 
-    void HandleCanTriggered(string tag)
+    public void AddScore(int points)
+    {
+        score += points; // 自分のスコアも加算
+        GameManager.Instance.AddScore(points); // GameManager にも記録
+        UpdateScoreText(); // UI更新！
+    }
+
+    public void HandleCanTriggered(string tag)
     {
         Debug.Log("缶が" + tag + "に当たりました。UIボタンを表示します");
-        int points = GetPointsFromTag(tag); // タグから点数取得
-        StartCoroutine(ShowTemporaryScore(points)); // 1秒後に表示！
+        int points = GetPointsFromTag(tag);
+        AddScore(points);
+        StartCoroutine(ShowTemporaryScore(points));
+        GameManager.Instance.AddHitCountOnly();
 
-        triggerCount++;
-
-        if (triggerCount >= MAX_TRIGGERS)
+        if (GameManager.Instance.IsGameOver())
         {
-            isGameOver = true;
-            StartCoroutine(DelayedShowFinalScore());
+            // ★スポーンボタン非表示にする（安全のため）
+            if (uiButton != null)
+            {
+                uiButton.SetActive(false);
+            }
+
+            StartCoroutine(DelayedShowFinalScore()); // ← 最終スコアとリセットボタン表示
             return;
         }
+
 
         StartCoroutine(ShowUIButtonAfterDelay(2f));
     }
@@ -87,85 +135,52 @@ public class Score : MonoBehaviour
     {
         if (temporaryScoreText != null)
         {
-            temporaryScoreText.gameObject.SetActive(false); // ← ここで非表示に！
+            temporaryScoreText.gameObject.SetActive(false);
         }
 
-        if (currentActionCount >= 5)
+        
+
+        // ★ この時点で15回なら終了処理
+        if (GameManager.Instance.totalHitCount >= 15)
         {
-            isGameOver = true;
             ShowFinalScore();
             return;
         }
 
+        // ★ 5回 or 10回ならシーンを移行（ここがメイン修正）
+        if (GameManager.Instance.IsTransitionPoint())
+        {
+            GameManager.Instance.MoveToNextSceneIfNeeded();
+            return; // 次のシーンへ移動するので以降の処理不要
+        }
+
+        // 通常時の処理（新しい缶を出す）
         if (uiButton != null)
         {
             uiButton.SetActive(false);
-            uiButton.GetComponent<Button>().interactable = false;
-        }
-
-        currentActionCount++; // ← 新しく自分で用意したカウント変数
-        Debug.Log("現在のアクション数: " + currentActionCount);
-
-        // 5回終わったら終了フラグを立てる
-        if (currentActionCount >= 5)
-        {
-
-            isGameOver = true;
-            Debug.Log("ゲーム終了フラグを立てました");
-            ShowFinalScore(); // ★ この時点でスコアを表示！
-            return; // もうSpawnしない
+            uiButton.GetComponent<UnityEngine.UI.Button>().interactable = false;
         }
 
         if (bollController != null)
-        { 
-
             bollController.SpawnNewCan();
 
-        }
         if (unityChanController != null)
-        {
             unityChanController.ResetAnimationState();
-        }
-        
     }
 
     void ShowFinalScore()
     {
-        Debug.Log("最終スコアを表示します！");
-        Debug.Log("score の値: " + score); // ←★スコアの実数値を確認
-
-        if (scoreText != null)
-        {
-            scoreText.gameObject.SetActive(false);
-        }
+        if (scoreText != null) scoreText.gameObject.SetActive(false);
 
         if (finalScoreText != null)
         {
-            finalScoreText.text = "Score " + score;
+            finalScoreText.text = "Score " + GameManager.Instance.totalScore;
             finalScoreText.gameObject.SetActive(true);
         }
         else
         {
             Debug.LogWarning("finalScoreText がアサインされていません！");
         }
-    }
-
-    public void AddScore(int points)
-    {
-        score += points;
-        UpdateScoreText();
-    }
-
-    public void SubtractScore(int points)
-    {
-        score -= points;
-        UpdateScoreText();
-    }
-
-    private void UpdateScoreText()
-    {
-        if (scoreText != null)
-            scoreText.text = "Score: " + score.ToString();
     }
 
     private IEnumerator DelayedShowFinalScore()
@@ -180,6 +195,20 @@ public class Score : MonoBehaviour
         }
     }
 
+    private IEnumerator ShowTemporaryScore(int points)
+    {
+        yield return new WaitForSeconds(1f);
+
+        if (temporaryScoreText != null)
+        {
+            temporaryScoreText.text = points >= 0 ? $"+{points}" : points.ToString();
+            temporaryScoreText.gameObject.SetActive(true);
+
+            yield return new WaitForSeconds(1f);
+            temporaryScoreText.gameObject.SetActive(false);
+        }
+    }
+
     private IEnumerator ShowUIButtonAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -187,25 +216,14 @@ public class Score : MonoBehaviour
         if (uiButton != null)
         {
             uiButton.SetActive(true);
-            uiButton.GetComponent<Button>().interactable = true;
+            uiButton.GetComponent<UnityEngine.UI.Button>().interactable = true;
         }
     }
 
-    private IEnumerator ShowTemporaryScore(int points)
+    private void UpdateScoreText()
     {
-        yield return new WaitForSeconds(1f); // ← 1秒待ってから表示
-
-        if (temporaryScoreText != null)
-        {
-            temporaryScoreText.text = points >= 0 ? $"+{points}" : points.ToString();
-            temporaryScoreText.gameObject.SetActive(true);
-
-            //表示後に2秒待ってから非表示に
-            yield return new WaitForSeconds(1f);
-            temporaryScoreText.gameObject.SetActive(false);
-        }
-
-        
+        if (scoreText != null)
+            scoreText.text = "Score: " + GameManager.Instance.totalScore;
     }
 
     private int GetPointsFromTag(string tag)
@@ -222,7 +240,31 @@ public class Score : MonoBehaviour
 
     public void OnResetButtonClicked()
     {
-        Scene currentScene = SceneManager.GetActiveScene(); // 現在のシーン取得
-        SceneManager.LoadScene(currentScene.name); // 同じシーンを再読み込み！
+        GameManager.Instance.ResetGame();
+        SceneManager.LoadScene(0); // 最初のシーンに戻す
     }
+
+    void TryRegisterHandler()
+    {
+        GameObject currentCan = GameObject.FindWithTag("Can");
+        if (currentCan == null)
+        {
+            Debug.LogWarning("【Handler登録】Can タグ付きオブジェクトが見つかりません！");
+            return;
+        }
+
+        var handler = currentCan.GetComponent<CanCollisionHandler>();
+        if (handler != null && handler != currentHandler)
+        {
+            if (currentHandler != null)
+                currentHandler.OnCanTriggered -= HandleCanTriggered;
+
+            currentHandler = handler;
+            currentHandler.OnCanTriggered += HandleCanTriggered;
+            Debug.Log("【登録成功】Handler 登録されました！");
+
+            CancelInvoke("TryRegisterHandler"); // 登録できたら停止
+        }
+    }
+
 }

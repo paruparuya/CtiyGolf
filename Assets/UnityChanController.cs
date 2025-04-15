@@ -61,6 +61,11 @@ public class UnityChanController : MonoBehaviour
                 
                 shootButton.SetActive(false);
             }
+            if (shootButton != null && shootButton.activeSelf)
+            {
+                shootButton.SetActive(false); // îOÇÃÇΩÇﬂÇÃìÒèdîÒï\é¶ÅI
+            }
+
         }
     }
 

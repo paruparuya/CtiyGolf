@@ -1,77 +1,89 @@
 using UnityEngine;
-using UnityEngine.UI;
-using System.Collections;
 using System;
 
 public class CanCollisionHandler : MonoBehaviour
 {
-    private BollController controller; // BollControllerへの参照
-    private Score scoreManager; // Scoreへの参照
-    private bool hasTriggered = false; // トリガーがすでに反応しているかどうか
-    public event Action<string> OnCanTriggered; // ← 追加：タグ名を通知
+    private BollController controller;
+    private Score scoreManager;
+    private bool hasTriggered = false;
+    public event Action<string> OnCanTriggered;
 
-    // 初期化処理
+    public AudioClip trashSound;
+    public AudioClip windowSound;
+    public AudioClip groundSound;
+    public AudioClip boxSound;
+
+    private AudioSource audioSource;
+
     void Start()
     {
-        // BollControllerとScoreManagerをシーンから探して取得
+        audioSource = GetComponent<AudioSource>();
         controller = FindObjectOfType<BollController>();
         scoreManager = FindObjectOfType<Score>();
-
-        
     }
 
-    // トリガーに入った時の処理
     void OnTriggerEnter(Collider other)
     {
         if (hasTriggered) return;
 
+        int points = 0;
+
         if (other.CompareTag("Trash") || other.CompareTag("Window") || other.CompareTag("Box") || other.CompareTag("Ground"))
         {
-            // タグに応じた点数を設定
-            int points = 0;
+            // ★ scoreManager が null かチェック
+            if (scoreManager == null)
+            {
+                Debug.LogError("【エラー】scoreManager が null です！");
+            }
+            else
+            {
+                Debug.Log("scoreManager は見つかっています！");
+            }
+
+            // ★ OnCanTriggered イベントが登録されているか確認
+            if (OnCanTriggered == null)
+            {
+                Debug.LogWarning("【警告】OnCanTriggered が登録されていません！");
+            }
+            else
+            {
+                Debug.Log("OnCanTriggered が登録されています。イベント発火します！");
+            }
+
             switch (other.tag)
             {
                 case "Trash":
-                    points = 10;  //ゴミ箱に入ったら
+                    points = 10;
+                    if (trashSound != null && audioSource != null) audioSource.PlayOneShot(trashSound);
                     break;
                 case "Window":
-                    points = -20;  //窓に当たったら
+                    points = -20;
+                    if (windowSound != null && audioSource != null) audioSource.PlayOneShot(windowSound);
                     break;
                 case "Box":
-                    points = +50;   //箱に入ったら
+                    points = 50;
+                    if (boxSound != null && audioSource != null) audioSource.PlayOneShot(boxSound);
                     break;
                 case "Ground":
-                    points = -5;  //地面に当たったら
-                    break;
-                default:
-                    points = 0;    //例外
+                    points = -5;
+                    if (groundSound != null && audioSource != null) audioSource.PlayOneShot(groundSound);
                     break;
             }
-
-            Debug.Log($"缶が {other.tag} に当たりました！ 点数: {points}");
 
             hasTriggered = true;
             OnCanTriggered?.Invoke(other.tag);
-
-            // Score スクリプトを使ってスコアを更新（scoreManager は Start() で Find している前提）
-            if (scoreManager != null)
-            {
-                Debug.Log("スコアに加算: " + points); // ★ここ追加！
-                if (points >= 0)
-                scoreManager.AddScore(points);
-                else
-                   
-                    scoreManager.SubtractScore(-points);
-            }
         }
     }
 
+    public void RegisterScoreHandler(Score score)
+    {
+        scoreManager = score;
+        OnCanTriggered += score.HandleCanTriggered;
+        Debug.Log("【手動登録】スコアハンドラー登録成功！");
+    }
 
-    // 新しい缶を生成したらボタンを非表示にする
     public void ResetTrigger()
     {
-        hasTriggered = false; // 反応フラグをリセット
-
-        
+        hasTriggered = false;
     }
 }
